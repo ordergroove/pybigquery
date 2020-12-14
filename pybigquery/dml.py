@@ -8,7 +8,7 @@ class BaseMatchClause(ClauseElement):
             raise ValueError("by must be one of [source|target]")
 
         self.then = then
-        self.and_ = and_
+        self.and_ = MergeSearchConditionClause(and_)
         self.by = by
 
 
@@ -20,6 +20,13 @@ class WhenMatchedClause(BaseMatchClause):
     __visit_name__ = "when_matched"
 
 
+class MergeSearchConditionClause(ClauseElement):
+    __visit_name__ = "merge_search_condition"
+
+    def __init__(self, binary_expression):
+        self.binary_expression = binary_expression
+
+
 class Merge(Executable, ClauseElement):
     __visit_name__ = "merge"
     _returning = None
@@ -28,15 +35,15 @@ class Merge(Executable, ClauseElement):
         self.target = target
         self.source = source
         self.merge_condition = condition
-        self.when_clauses = []
+        self.when_clauses = tuple()
 
     @_generative
     def when_matched(self, *args, **kw):
-        self.when_clauses.append(WhenMatchedClause(*args, **kw))
+        self.when_clauses += (WhenMatchedClause(*args, **kw), )
 
     @_generative
     def when_not_matched(self, *args, **kw):
-        self.when_clauses.append(WhenNotMatchedClause(*args, **kw))
+        self.when_clauses += (WhenNotMatchedClause(*args, **kw), )
 
 
 class MergeInsertClause(ClauseElement):

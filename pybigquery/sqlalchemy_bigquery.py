@@ -204,25 +204,28 @@ class BigQueryCompiler(SQLCompiler):
             select, within_group_by=True, **kw
         )
 
+    def visit_merge_search_condition(self, element, **kw):
+        if element.binary_expression is None:
+            return ""
+        return " AND " + self.process(element.binary_expression, include_table=False, **kw)
+
     def visit_when_not_matched(self, element, **kw):
-        search_condition = " AND " + self.process(element.and_) if element.and_ else ""
         return """
             WHEN NOT MATCHED BY {source_or_target} {search_condition}
             THEN {then}
         """.format(
             source_or_target=element.by,
             then=self.process(element.then, **kw),
-            search_condition=search_condition
+            search_condition=self.process(element.and_, **kw)
         )
 
     def visit_when_matched(self, element, **kw):
-        search_condition = "AND " + self.process(element.and_) if element.and_ else ""
         return """
             WHEN MATCHED {search_condition}
             THEN {then}
         """.format(
             then=self.process(element.then, **kw),
-            search_condition=search_condition
+            search_condition=self.process(element.and_, **kw)
         )
 
     def visit_merge(self, element, **kw):
