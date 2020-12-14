@@ -222,14 +222,14 @@ class BigQueryCompiler(SQLCompiler):
             THEN {then}
         """.format(
             then=self.process(element.then, **kw),
-            and_clause=search_condition
+            search_condition=search_condition
         )
 
     def visit_merge(self, element, **kw):
         return """
             MERGE INTO {target}
             USING {source} ON {merge_condition}
-            {when_clauses}     
+            {when_clauses}
         """.format(
             target=self.process(element.target, asfrom=True, **kw),
             source=self.process(element.source, asfrom=True, **kw),
@@ -246,7 +246,8 @@ class BigQueryCompiler(SQLCompiler):
         return """INSERT ({}) VALUES ({})""".format(keys, values)
 
     def visit_merge_update(self, element, **kw):
-        updates = ",\n".join("%s = %s" % (self.preparer.quote_column(k.name), self.process(v)) for k, v in element.values.items())
+        updates = ",\n".join("%s = %s" % (self.preparer.quote_column(k.name),
+                                          self.process(v)) for k, v in element.values.items())
         return """UPDATE SET {}""".format(updates)
 
 

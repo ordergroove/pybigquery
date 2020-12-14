@@ -58,8 +58,15 @@ class MergeDeleteClause(ClauseElement):
     pass
 
 
-# Allow clauses to be imported similar to other SQLAlchemy DML clauses (i.e., `from sqlalchemy.sql import insert`)
-clause_factory = lambda cls: lambda *args, **kwargs: cls(*args, **kwargs)
+def clause_factory(cls):
+    """
+        Allow clauses to be imported similar to other SQLAlchemy DML clauses (i.e., `from sqlalchemy.sql import insert`)
+    """
+    def factory(*args, **kwargs):
+        return cls(*args, **kwargs)
+    return factory
+
+
 merge = clause_factory(Merge)
 merge_insert = clause_factory(MergeInsertClause)
 merge_update = clause_factory(MergeUpdateClause)
