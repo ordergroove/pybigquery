@@ -131,8 +131,6 @@ class BigQueryExecutionContext(DefaultExecutionContext):
 
 class BigQueryCompiler(SQLCompiler):
 
-    use_schema_names_for_columns = False
-
     def __init__(self, dialect, statement, column_keys=None,
                  inline=False, **kwargs):
         if isinstance(statement, Column):
@@ -177,7 +175,7 @@ class BigQueryCompiler(SQLCompiler):
         else:
             effective_schema = self.preparer.schema_for_object(table)
 
-            if self.use_schema_names_for_columns and effective_schema:
+            if self.dialect.use_schema_in_column_references and effective_schema:
                 schema_prefix = self.preparer.quote_schema(
                     effective_schema) + '.'
             else:
@@ -337,12 +335,14 @@ class BigQueryDialect(DefaultDialect):
             credentials_path=None,
             location=None,
             credentials_info=None,
+            use_schema_in_column_references=False,
             *args, **kwargs):
         super(BigQueryDialect, self).__init__(*args, **kwargs)
         self.arraysize = arraysize
         self.credentials_path = credentials_path
         self.credentials_info = credentials_info
-        self.location = location
+        self.location = location,
+        self.use_schema_in_column_references = use_schema_in_column_references
         self.dataset_id = None
 
     @classmethod
