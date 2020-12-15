@@ -205,7 +205,7 @@ class BigQueryCompiler(SQLCompiler):
     def visit_merge_search_condition(self, element, **kw):
         if element.binary_expression is None:
             return ""
-        return " AND " + self.process(element.binary_expression, include_table=False, **kw)
+        return " AND " + self.process(element.binary_expression, **kw)
 
     def visit_when_not_matched(self, element, **kw):
         return """
