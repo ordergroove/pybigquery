@@ -248,13 +248,30 @@ class BigQueryDDLCompiler(DDLCompiler):
 
     def post_create_table(self, table):
         bq_opts = table.dialect_options['bigquery']
+        ddl_clauses = []
         opts = []
+
         if 'description' in bq_opts:
             opts.append('description={}'.format(self.preparer.quote(bq_opts['description'])))
         if 'friendly_name' in bq_opts:
             opts.append('friendly_name={}'.format(self.preparer.quote(bq_opts['friendly_name'])))
+        if 'require_partition_filter' in bq_opts:
+            opt = bq_opts["require_partition_filter"]
+            assert isinstance(opt, bool), "Expected bool for option require_partition_filter, got {}".format(type(opt))
+            opts.append("require_partition_filter={}".format(bq_opts['require_partition_filter']))
+        if 'partition_by' in bq_opts:
+            ddl_clauses.append('\nPARTITION BY {}'.format(bq_opts['partition_by']))
+        if 'cluster_by' in bq_opts:
+            opt = bq_opts["cluster_by"]
+            assert isinstance(opt, list), "Expected list of column names for bigquery_cluster_by, got %s" % type(opt)
+            cluster_columns = [self.preparer.quote(c) for c in bq_opts['cluster_by']]
+            ddl_clauses.append("\nCLUSTER BY {}".format(",".join(cluster_columns)))
         if opts:
-            return '\nOPTIONS({})'.format(', '.join(opts))
+            ddl_clauses.append('\nOPTIONS({})'.format(', '.join(opts)))
+
+        if ddl_clauses:
+            return "\n".join(ddl_clauses)
+
         return ''
 
 
