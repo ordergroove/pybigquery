@@ -444,7 +444,7 @@ def test_dml(engine, session, table_dml):
     assert len(result) == 0
 
 
-def test_create_table(engine):
+def test_create_table(engine, inspector):
     meta = MetaData()
     Table(
         'test_pybigquery.test_table_create', meta,
@@ -460,9 +460,19 @@ def test_create_table(engine):
         Column('time_c', sqlalchemy.TIME),
         Column('binary_c', sqlalchemy.BINARY),
         bigquery_description="test table description",
-        bigquery_friendly_name="test table name"
+        bigquery_friendly_name="test table name",
+        bigquery_cluster_by=["integer_c", "string_c"],
+        bigquery_partition_by="DATE(timestamp_c)",
+        bigquery_require_partition_filtering=True
     )
     meta.create_all(engine)
+
+    # Validate index creation
+    indexes = inspector.get_indexes('test_pybigquery.test_table_create')
+    assert len(indexes) == 2
+    assert indexes[0] == {'name': 'partition', 'column_names': ['timestamp_c'], 'unique': False}
+    assert indexes[1] == {'name': 'clustering', 'column_names': ['integer_c', 'string_c'], 'unique': False}
+
     meta.drop_all(engine)
 
     # Test creating tables with declarative_base
