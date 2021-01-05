@@ -446,7 +446,7 @@ class BigQueryDialect(DefaultDialect):
 
         result = []
         for dataset in datasets:
-            if current_schema is not None and current_schema != dataset.dataset_id:
+            if current_schema is not None and current_schema != connection.schema_for_object.map_[dataset.dataset_id]:
                 continue
 
             tables = client.list_tables(dataset.reference)
