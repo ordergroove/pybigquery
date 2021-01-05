@@ -143,7 +143,7 @@ class BigQueryCompiler(SQLCompiler):
         This ensures that fields won't contain duplicate names
         """
 
-        args[0].use_labels = True
+        args[0].use_labels = kwargs.get("use_labels", True)
         return super(BigQueryCompiler, self).visit_select(*args, **kwargs)
 
     def visit_column(self, column, add_to_result_map=None,
@@ -287,6 +287,7 @@ class BigQueryDialect(DefaultDialect):
             location=None,
             credentials_info=None,
             use_schema_in_column_references=False,
+            include_table_name_in_selected_columns=True,
             *args, **kwargs):
         super(BigQueryDialect, self).__init__(*args, **kwargs)
         self.arraysize = arraysize
@@ -295,6 +296,7 @@ class BigQueryDialect(DefaultDialect):
         self.location = location,
         self.use_schema_in_column_references = use_schema_in_column_references
         self.dataset_id = None
+        self.include_table_name_in_selected_columns = include_table_name_in_selected_columns
 
     @classmethod
     def dbapi(cls):
