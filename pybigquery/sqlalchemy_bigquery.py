@@ -200,6 +200,55 @@ class BigQueryCompiler(SQLCompiler):
             select, within_group_by=True, **kw
         )
 
+    def visit_merge_search_condition(self, element, **kw):
+        if element.binary_expression is None:
+            return ""
+        return " AND " + self.process(element.binary_expression, **kw)
+
+    def visit_when_not_matched(self, element, **kw):
+        return """
+            WHEN NOT MATCHED BY {source_or_target} {search_condition}
+            THEN {then}
+        """.format(
+            source_or_target=element.by,
+            then=self.process(element.then, **kw),
+            search_condition=self.process(element.and_, **kw)
+        )
+
+    def visit_when_matched(self, element, **kw):
+        return """
+            WHEN MATCHED {search_condition}
+            THEN {then}
+        """.format(
+            then=self.process(element.then, **kw),
+            search_condition=self.process(element.and_, **kw)
+        )
+
+    def visit_merge(self, element, **kw):
+        return """
+            MERGE INTO {target}
+            USING {source} ON {merge_condition}
+            {when_clauses}
+        """.format(
+            target=self.process(element.target, asfrom=True, **kw),
+            source=self.process(element.source, asfrom=True, **kw),
+            merge_condition=self.process(element.merge_condition, **kw),
+            when_clauses="\n".join(self.process(c, **kw) for c in element.when_clauses),
+        )
+
+    def visit_merge_delete(self, *args, **kw):
+        return "DELETE"
+
+    def visit_merge_insert(self, element, **kw):
+        keys = ",".join(self.preparer.quote_column(c.name, **kw) for c in element.values.keys())
+        values = ",".join(self.process(c, **kw) for c in element.values.values())
+        return """INSERT ({}) VALUES ({})""".format(keys, values)
+
+    def visit_merge_update(self, element, **kw):
+        updates = ",\n".join("%s = %s" % (self.preparer.quote_column(k.name),
+                                          self.process(v)) for k, v in element.values.items())
+        return """UPDATE SET {}""".format(updates)
+
 
 class BigQueryTypeCompiler(GenericTypeCompiler):
 
@@ -246,13 +295,30 @@ class BigQueryDDLCompiler(DDLCompiler):
 
     def post_create_table(self, table):
         bq_opts = table.dialect_options['bigquery']
+        ddl_clauses = []
         opts = []
+
         if 'description' in bq_opts:
             opts.append('description={}'.format(self.preparer.quote(bq_opts['description'])))
         if 'friendly_name' in bq_opts:
             opts.append('friendly_name={}'.format(self.preparer.quote(bq_opts['friendly_name'])))
+        if 'require_partition_filter' in bq_opts:
+            opt = bq_opts["require_partition_filter"]
+            assert isinstance(opt, bool), "Expected bool for option require_partition_filter, got {}".format(type(opt))
+            opts.append("require_partition_filter={}".format(bq_opts['require_partition_filter']))
+        if 'partition_by' in bq_opts:
+            ddl_clauses.append('\nPARTITION BY {}'.format(bq_opts['partition_by']))
+        if 'cluster_by' in bq_opts:
+            opt = bq_opts["cluster_by"]
+            assert isinstance(opt, list), "Expected list of column names for bigquery_cluster_by, got %s" % type(opt)
+            cluster_columns = [self.preparer.quote(c) for c in bq_opts['cluster_by']]
+            ddl_clauses.append("\nCLUSTER BY {}".format(",".join(cluster_columns)))
         if opts:
-            return '\nOPTIONS({})'.format(', '.join(opts))
+            ddl_clauses.append('\nOPTIONS({})'.format(', '.join(opts)))
+
+        if ddl_clauses:
+            return "\n".join(ddl_clauses)
+
         return ''
 
 
