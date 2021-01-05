@@ -10,7 +10,7 @@ def readme():
 
 setup(
     name="pybigquery",
-    version='0.5.3',
+    version='0.5.4',
     description="SQLAlchemy dialect for BigQuery",
     long_description=readme(),
     long_description_content_type="text/x-rst",
