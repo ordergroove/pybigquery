@@ -436,6 +436,7 @@ class BigQueryDialect(DefaultDialect):
 
     def _get_table_or_view_names(self, connection, table_type, schema=None):
         current_schema = schema or self.dataset_id
+        current_schema = connection.schema_for_object.map_[current_schema]
         get_table_name = self._build_formatted_table_id \
             if self.dataset_id is None else \
             operator.attrgetter("table_id")
