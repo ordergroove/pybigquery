@@ -138,7 +138,13 @@ To add metadata to a table:
 
 .. code-block:: python
 
-    table = Table('mytable', ..., bigquery_description='my table description', bigquery_friendly_name='my table friendly name')
+    table = Table('mytable',
+                  ...,
+                   bigquery_description='my table description',
+                   bigquery_friendly_name='my table friendly name',
+                   bigquery_partition_by="partitioning_field",
+                   bigquery_cluster_by=["cluster_field_1", "cluster_field_2"],
+                   bigquery_require_partition_filter=False)
 
 To add metadata to a column:
 
