@@ -4,11 +4,12 @@ from __future__ import unicode_literals
 from google.api_core.exceptions import BadRequest
 from pybigquery.api import ApiClient
 from pybigquery.sqlalchemy_bigquery import BigQueryDialect
+from pybigquery.dml import merge, merge_insert, merge_update, merge_delete
 from sqlalchemy.engine import create_engine
 from sqlalchemy.schema import Table, MetaData, Column
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import types, func, case, inspect
-from sqlalchemy.sql import expression, select, literal_column
+from sqlalchemy.sql import expression, select, literal_column, literal
 from sqlalchemy.exc import NoSuchTableError
 from sqlalchemy.orm import sessionmaker
 from pytz import timezone
@@ -444,6 +445,41 @@ def test_dml(engine, session, table_dml):
     assert len(result) == 0
 
 
+def test_merge(engine, table_dml):
+    # setup merge tests
+    source = select([literal(1).label("integer"), literal("a").label("string")]).alias("source")
+    merge_statement = merge(
+        source=source,
+        target=table_dml,
+        condition=table_dml.c.integer == source.c.integer
+    )
+
+    # test conditional merge insert
+    engine.execute(
+        merge_statement.when_not_matched(
+            and_=source.c.string == literal("abc"),
+            then=merge_insert({table_dml.c.integer: source.c.integer})
+        )
+    )
+    result = table_dml.select().execute().fetchall()
+    assert len(result) == 0
+
+    # test unconditional merge insert
+    engine.execute(merge_statement.when_not_matched(then=merge_insert({table_dml.c.integer: source.c.integer})))
+    result = table_dml.select().execute().fetchall()
+    assert len(result) == 1
+
+    # test merge update
+    engine.execute(merge_statement.when_matched(then=merge_update({table_dml.c.string: literal("abc")})))
+    result = select([table_dml.c.string]).execute().fetchall()[0][0]
+    assert result == "abc"
+
+    # test merge delete
+    engine.execute(merge_statement.when_matched(merge_delete()))
+    result = table_dml.select().execute().fetchall()
+    assert len(result) == 0
+
+  
 def test_create_table(engine, inspector):
     meta = MetaData()
     Table(
