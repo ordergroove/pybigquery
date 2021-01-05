@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 from google.api_core.exceptions import BadRequest
+from google.cloud import secretmanager
 from pybigquery.api import ApiClient
 from pybigquery.sqlalchemy_bigquery import BigQueryDialect
 from pybigquery.dml import merge, merge_insert, merge_update, merge_delete
@@ -17,7 +18,10 @@ import pytest
 import sqlalchemy
 import datetime
 import decimal
+from tempfile import NamedTemporaryFile
 
+
+TEST_PROJECT = 'data-pipelines-tests-298816'
 
 ONE_ROW_CONTENTS_EXPANDED = [
     588,
@@ -99,8 +103,19 @@ SAMPLE_COLUMNS = [
 
 
 @pytest.fixture(scope='session')
-def engine():
-    engine = create_engine('bigquery://', echo=True)
+def test_service_account_key():
+    client = secretmanager.SecretManagerServiceClient()
+    name = client.secret_version_path(TEST_PROJECT, 'data-pipelines-bq-tests-service-account', 1)
+    response = client.access_secret_version(name)
+    with NamedTemporaryFile(suffix='.json') as key_file:
+        key_file.write(response.payload.data.decode('UTF-8'))
+        key_file.flush()
+        yield key_file.name
+
+
+@pytest.fixture(scope='session')
+def engine(test_service_account_key):
+    engine = create_engine('bigquery://{}'.format(TEST_PROJECT), echo=True, credentials_path=test_service_account_key)
     return engine
 
 
@@ -110,14 +125,16 @@ def dialect():
 
 
 @pytest.fixture(scope='session')
-def engine_using_test_dataset():
-    engine = create_engine('bigquery:///test_pybigquery', echo=True)
+def engine_using_test_dataset(test_service_account_key):
+    engine = create_engine('bigquery://{}/test_pybigquery'.format(TEST_PROJECT), echo=True,
+                           credentials_path=test_service_account_key)
     return engine
 
 
 @pytest.fixture(scope='session')
-def engine_with_location():
-    engine = create_engine('bigquery://', echo=True, location="asia-northeast1")
+def engine_with_location(test_service_account_key):
+    engine = create_engine('bigquery://{}'.format(TEST_PROJECT), echo=True, location="asia-northeast1",
+                           credentials_path=test_service_account_key)
     return engine
 
 
@@ -188,8 +205,8 @@ def query():
 
 
 @pytest.fixture(scope='session')
-def api_client():
-    return ApiClient()
+def api_client(test_service_account_key):
+    return ApiClient(project=TEST_PROJECT, credentials_path=test_service_account_key)
 
 
 def test_dry_run(engine, api_client):
@@ -479,7 +496,7 @@ def test_merge(engine, table_dml):
     result = table_dml.select().execute().fetchall()
     assert len(result) == 0
 
-  
+
 def test_create_table(engine, inspector):
     meta = MetaData()
     Table(
