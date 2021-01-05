@@ -139,10 +139,8 @@ class BigQueryCompiler(SQLCompiler):
 
     def visit_select(self, *args, **kwargs):
         """
-        Use labels for every column.
-        This ensures that fields won't contain duplicate names
+        Use labels for every column by default to ensures that fields won't contain duplicate names
         """
-
         args[0].use_labels = kwargs.get("use_labels", True)
         return super(BigQueryCompiler, self).visit_select(*args, **kwargs)
 
