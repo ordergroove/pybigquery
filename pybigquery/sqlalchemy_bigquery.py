@@ -434,7 +434,7 @@ class BigQueryDialect(DefaultDialect):
         """
         return row
 
-    def _get_table_or_view_names(self, connection, table_type, schema=None):
+    def _get_table_or_view_names(self, connection, table_types, schema=None):
         current_schema = schema or self.dataset_id
         if connection.schema_for_object.map_:
             current_schema = connection.schema_for_object.map_[current_schema]
@@ -452,7 +452,7 @@ class BigQueryDialect(DefaultDialect):
 
             tables = client.list_tables(dataset.reference)
             for table in tables:
-                if table_type == table.table_type:
+                if table.table_type in table_types:
                     result.append(get_table_name(table))
         return result
 
@@ -610,13 +610,13 @@ class BigQueryDialect(DefaultDialect):
         if isinstance(connection, Engine):
             connection = connection.connect()
 
-        return self._get_table_or_view_names(connection, "TABLE", schema)
+        return self._get_table_or_view_names(connection, {"TABLE", "EXTERNAL"}, schema)
 
     def get_view_names(self, connection, schema=None, **kw):
         if isinstance(connection, Engine):
             connection = connection.connect()
 
-        return self._get_table_or_view_names(connection, "VIEW", schema)
+        return self._get_table_or_view_names(connection, {"VIEW"}, schema)
 
     def do_rollback(self, dbapi_connection):
         # BigQuery has no support for transactions.
