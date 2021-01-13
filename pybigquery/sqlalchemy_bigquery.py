@@ -4,7 +4,6 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import operator
-import six
 
 from google import auth
 from google.cloud import bigquery
