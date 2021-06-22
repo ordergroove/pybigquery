@@ -343,6 +343,7 @@ class BigQueryDialect(DefaultDialect):
     supports_native_boolean = True
     supports_simple_order_by_label = True
     postfetch_lastrowid = False
+    cte_follows_insert = True
 
     def __init__(
             self,
